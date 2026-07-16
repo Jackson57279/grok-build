@@ -375,6 +375,46 @@ pub fn clear_api_key(grok_home: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
+/// auth.json scope for Cursor-backed API keys.
+pub const CURSOR_API_KEY_SCOPE: &str = "cursor::api_key";
+
+/// Read the Cursor API key from auth.json.
+pub fn read_cursor_api_key_from_store(grok_home: &Path) -> Option<String> {
+    let path = grok_home.join("auth.json");
+    let map = read_auth_json(&path).ok()?;
+    map.get(CURSOR_API_KEY_SCOPE).map(|a| a.key.clone())
+}
+
+/// Persist a Cursor API key under `cursor::api_key`.
+pub fn store_cursor_api_key(grok_home: &Path, api_key: &str) -> std::io::Result<()> {
+    let path = grok_home.join("auth.json");
+    let mut map = read_auth_json_or_empty_recovering_corrupt(&path)?;
+    map.insert(
+        CURSOR_API_KEY_SCOPE.to_owned(),
+        GrokAuth {
+            key: api_key.to_owned(),
+            auth_mode: AuthMode::ApiKey,
+            user_id: "cursor".to_owned(),
+            ..Default::default()
+        },
+    );
+    write_auth_json(&path, &map)
+}
+
+/// Remove the Cursor API key scope from auth.json.
+pub fn clear_cursor_api_key(grok_home: &Path) -> std::io::Result<()> {
+    let path = grok_home.join("auth.json");
+    if let Ok(mut map) = read_auth_json(&path) {
+        map.remove(CURSOR_API_KEY_SCOPE);
+        if map.is_empty() {
+            let _ = std::fs::remove_file(&path);
+        } else {
+            write_auth_json(&path, &map)?;
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod write_fallback_tests {
     use super::*;

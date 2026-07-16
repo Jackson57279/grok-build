@@ -10,6 +10,7 @@ use crate::app::agent_view::AgentView;
 use crate::app::app_view::{ActiveView, AppView, AuthMode, AuthState};
 use crate::scrollback::block::RenderBlock;
 use crate::scrollback::blocks::SessionEvent;
+use agent_client_protocol as acp;
 
 // ---------------------------------------------------------------------------
 // Auth dispatch
@@ -188,7 +189,32 @@ pub(super) fn dispatch_login(app: &mut AppView) -> Vec<Effect> {
         };
         return vec![];
     };
+    begin_authenticate(app, method_id)
+}
 
+/// `/connect` -- sign in with Cursor and bill model usage to the Cursor plan.
+pub(super) fn dispatch_connect_cursor(app: &mut AppView) -> Vec<Effect> {
+    let grok_home = xai_grok_shell::util::grok_home::grok_home();
+    let config_path = grok_home.join("config.toml");
+    if let Err(e) = xai_grok_shell::cursor::ensure_cursor_provider_config(&config_path) {
+        tracing::warn!(error = %e, "failed to persist preferred_provider=cursor");
+    }
+    // Prefer an advertised cursor method; otherwise force the cursor method id.
+    let method_id = app
+        .auth_methods
+        .iter()
+        .find(|m| m.id().0.as_ref() == xai_grok_shell::agent::auth_method::CURSOR_METHOD_ID)
+        .map(|m| m.id().clone())
+        .unwrap_or_else(|| {
+            acp::AuthMethodId::new(xai_grok_shell::agent::auth_method::CURSOR_METHOD_ID)
+        });
+    app.login_label = Some("Cursor".to_string());
+    app.login_method_id = Some(method_id.clone());
+    app.auth_start_mode = AuthMode::Command;
+    begin_authenticate(app, method_id)
+}
+
+fn begin_authenticate(app: &mut AppView, method_id: acp::AuthMethodId) -> Vec<Effect> {
     // Surface the auth UI when triggered from inside a session. `show_welcome`
     // resets ephemeral state here, covering the AuthComplete / cancel-login
     // fallbacks too (`auth_return_view` is only ever set here).
@@ -303,8 +329,18 @@ pub(super) fn handle_auth_complete(
             // have been started from the dashboard, not the agent
             // that 401'd).
             let mut retry_effects = Vec::new();
+            let connected_cursor = app
+                .login_method_id
+                .as_ref()
+                .is_some_and(|id| id.0.as_ref() == xai_grok_shell::agent::auth_method::CURSOR_METHOD_ID);
             for agent in app.agents.values_mut() {
                 strip_trailing_auth_error_blocks(agent);
+                if connected_cursor {
+                    agent.scrollback.push_block(RenderBlock::system(format!(
+                        "Connected to Cursor. Usage bills to your Cursor plan. Active model: {}.",
+                        xai_grok_shell::cursor::CURSOR_MODEL_DISPLAY_NAME
+                    )));
+                }
                 // Auto-resubmit the prompt that failed on the expired
                 // login so the user doesn't have to retype it. The
                 // user couldn't have queued another prompt during the
@@ -316,6 +352,12 @@ pub(super) fn handle_auth_complete(
                     agent.session.enqueue_in_flight_prompt_front(prompt);
                     retry_effects.extend(maybe_drain_queue(agent));
                 }
+            }
+            if connected_cursor {
+                app.show_toast(&format!(
+                    "Connected to Cursor \u{2014} {}",
+                    xai_grok_shell::cursor::CURSOR_MODEL_DISPLAY_NAME
+                ));
             }
             let mut effects = dispatch(Action::RequestBundleStatus, app);
             if app.usage_visible {

@@ -220,6 +220,9 @@ fn user_visible_builtins() -> &'static [BuiltinAgentName] {
         BuiltinAgentName::GeneralPurpose,
         BuiltinAgentName::Explore,
         BuiltinAgentName::Plan,
+        BuiltinAgentName::Librarian,
+        BuiltinAgentName::Oracle,
+        BuiltinAgentName::Reviewer,
         BuiltinAgentName::BrowserUse,
     ]
 }

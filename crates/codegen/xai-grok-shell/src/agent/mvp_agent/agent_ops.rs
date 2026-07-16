@@ -1097,6 +1097,25 @@ impl MvpAgent {
             model,
             session.as_ref().map(|a| a.key.as_str()),
         );
+        if crate::cursor::is_cursor_provider()
+            || self
+                .auth_method_id
+                .load()
+                .as_ref()
+                .is_some_and(|id| {
+                    crate::agent::auth_method::AuthMethodKind::from_id(id)
+                        == crate::agent::auth_method::AuthMethodKind::Cursor
+                })
+        {
+            if let Ok(key) = crate::cursor::resolve_cursor_api_key(false) {
+                let grok_home = crate::util::grok_home::grok_home();
+                if let Ok(bridge) =
+                    crate::cursor::ensure_bridge(&key, &self.launch_cwd, &grok_home)
+                {
+                    crate::cursor::apply_cursor_routing(&mut credentials, &bridge, &key);
+                }
+            }
+        }
         if matches!(preferred, Some(crate ::auth::PreferredAuthMethod::Oidc))
             && !model.has_own_credentials()
             && credentials.auth_type == xai_chat_state::AuthType::ApiKey
@@ -1161,6 +1180,15 @@ impl MvpAgent {
             deployment_id,
             user_id,
         );
+        if crate::cursor::is_cursor_provider()
+            || self.auth_method_id.load().as_ref().is_some_and(|id| {
+                crate::agent::auth_method::AuthMethodKind::from_id(id)
+                    == crate::agent::auth_method::AuthMethodKind::Cursor
+            })
+        {
+            config.model = crate::cursor::CURSOR_DEFAULT_MODEL.to_owned();
+            config.api_backend = crate::sampling::ApiBackend::ChatCompletions;
+        }
         config.origin_client = origin_client;
         config
     }

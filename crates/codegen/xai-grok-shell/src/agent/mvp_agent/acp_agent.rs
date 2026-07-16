@@ -311,15 +311,23 @@ impl acp::Agent for MvpAgent {
             Some(crate::auth::PreferredAuthMethod::ApiKey) => false,
             _ => has_cached_token,
         };
-        let built = auth_method::build_auth_methods(auth_method::AuthMethodsBuildInputs {
-            has_external_api_key,
-            has_cached_token,
-            has_enterprise_oidc,
-            enterprise_oidc_issuer: enterprise_oidc_issuer.as_deref(),
-            login_label: login_label.as_deref(),
-            has_auth_provider_command: has_auth_provider,
-            preferred_method,
-        });
+        let built = if crate::cursor::is_cursor_provider() {
+            let has_cursor_key = crate::cursor::read_cursor_api_key(
+                &crate::util::grok_home::grok_home(),
+            )
+            .is_some();
+            auth_method::build_cursor_auth_methods(has_cursor_key)
+        } else {
+            auth_method::build_auth_methods(auth_method::AuthMethodsBuildInputs {
+                has_external_api_key,
+                has_cached_token,
+                has_enterprise_oidc,
+                enterprise_oidc_issuer: enterprise_oidc_issuer.as_deref(),
+                login_label: login_label.as_deref(),
+                has_auth_provider_command: has_auth_provider,
+                preferred_method,
+            })
+        };
         let auth_methods = built.methods;
         xai_grok_telemetry::unified_log::info(
             "auth: initialize() built auth_methods for ACP response",
@@ -341,12 +349,17 @@ impl acp::Agent for MvpAgent {
             ),
         );
         debug_assert!(
-            ! has_external_api_key || matches!(auth_methods.first().map(| m |
-            auth_method::AuthMethodKind::from_id(m.id())),
-            Some(auth_method::AuthMethodKind::XaiApiKey)),
+            crate::cursor::is_cursor_provider()
+                || !has_external_api_key
+                || matches!(
+                    auth_methods
+                        .first()
+                        .map(|m| auth_method::AuthMethodKind::from_id(m.id())),
+                    Some(auth_method::AuthMethodKind::XaiApiKey)
+                ),
             "BYOK invariant violated: xai.api_key MUST be auth_methods.first() \
              when has_external_api_key is true; got {:?}",
-            auth_methods.first().map(| m | m.id()),
+            auth_methods.first().map(|m| m.id()),
         );
         let default_auth_method_id_wire: Option<String> = built
             .default_auth_method_id
@@ -471,6 +484,33 @@ impl acp::Agent for MvpAgent {
             }
         }
         match arguments.method_id.0.as_ref() {
+            auth_method::CURSOR_METHOD_ID => {
+                let key = crate::cursor::resolve_cursor_api_key(true).map_err(|e| {
+                    emit_login_span(false, "cursor", None, Some("no_credentials"));
+                    acp::Error::auth_required().data(e.to_string())
+                })?;
+                let cwd = self.launch_cwd.clone();
+                let grok_home = crate::util::grok_home::grok_home();
+                let bridge = crate::cursor::ensure_bridge(&key, &cwd, &grok_home).map_err(|e| {
+                    emit_login_span(false, "cursor", None, Some("bridge_failed"));
+                    acp::Error::auth_required().data(e.to_string())
+                })?;
+                {
+                    let mut sampling_config = self.sampling_config.borrow_mut();
+                    sampling_config.api_key = Some(key.clone());
+                    sampling_config.base_url = bridge.base_url.clone();
+                    sampling_config.api_backend = crate::sampling::ApiBackend::ChatCompletions;
+                    sampling_config.model = crate::cursor::CURSOR_DEFAULT_MODEL.to_owned();
+                }
+                self.models_manager.ensure_cursor_model(&bridge);
+                self.set_auth_method(arguments.method_id.clone());
+                emit_login_span(true, "cursor", Some("cursor"), None);
+                log_event(xai_grok_telemetry::events::Login {
+                    auth_method: "cursor".to_string(),
+                    user_id: Some("cursor".to_string()),
+                });
+                Ok(Default::default())
+            }
             auth_method::XAI_API_KEY_METHOD_ID => {
                 if self.cfg.borrow().grok_com_config.api_key_auth_disabled() {
                     emit_login_span(false, "api_key", None, Some("disabled_by_admin"));

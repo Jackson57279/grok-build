@@ -595,6 +595,8 @@ pub enum Action {
     SwitchAccount,
     /// User pressed login on the welcome screen.
     Login,
+    /// Connect a Cursor account and route inference through Cursor billing.
+    ConnectCursor,
     /// Cancel an in-progress login that was started from inside a session
     /// (`/login` or a 401 re-auth prompt) and return to the previous view.
     /// Distinct from `Quit`: abandoning a mid-session re-auth must not exit

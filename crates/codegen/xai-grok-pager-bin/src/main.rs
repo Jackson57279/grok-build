@@ -28,6 +28,7 @@ mod jemalloc_malloc_conf {
 use anyhow::Result;
 use std::env;
 use std::net::SocketAddr;
+use std::path::PathBuf;
 use tokio_util::sync::CancellationToken;
 use xai_grok_pager::app::{
     AgentCmd, Command, HeadlessArgs, LeaderTargetArgs, PagerArgs, join_early_prefetch,
@@ -1740,10 +1741,26 @@ async fn async_main() -> Result<()> {
                 legacy: _,
                 oauth,
                 device_auth,
+                cursor,
                 devbox,
             } => {
                 init_tracing_simple("cli");
                 let _otel_guard = xai_grok_telemetry::otel_layer::otel_guard();
+                if cursor {
+                    let key = xai_grok_shell::cursor::resolve_cursor_api_key(true)?;
+                    let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+                    let grok_home = xai_grok_shell::util::grok_home::grok_home();
+                    let bridge = xai_grok_shell::cursor::ensure_bridge(&key, &cwd, &grok_home)?;
+                    let config_path = grok_home.join("config.toml");
+                    xai_grok_shell::cursor::ensure_cursor_provider_config(&config_path)?;
+                    println!("Signed in with Cursor.");
+                    println!("Bridge: {}", bridge.base_url);
+                    println!(
+                        "Default model: {}",
+                        xai_grok_shell::cursor::CURSOR_DEFAULT_MODEL
+                    );
+                    xai_grok_shell::instrumentation::finalize_and_exit(0);
+                }
                 let config = xai_grok_shell::config::load_effective_config_disk_only()
                     .map_err(|e| anyhow::anyhow!("Failed to load config: {e}"))?;
                 let config = AgentConfig::new_from_toml_cfg(&config)

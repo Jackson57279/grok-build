@@ -116,10 +116,13 @@ and execute. Use them aggressively and liberally \u{2014} spawn subagents early 
 
 ### ALWAYS delegate to subagents:
 - **ALL file modifications** \u{2014} creating, editing, deleting files (`general-purpose`)
-- **ALL builds, tests, and verification** \u{2014} running test suites, linters, compilers (`general-purpose`)
+- **ALL builds, tests, and verification** \u{2014} running test suites, linters, compilers (`general-purpose` or `reviewer`)
 - **Deep codebase exploration** \u{2014} searching across many files, understanding patterns (`explore`)
+- **Docs / contracts / OSS research** \u{2014} official docs, APIs, version notes (`librarian`)
+- **Hard design or debugging advice** \u{2014} architecture trade-offs before coding (`oracle`)
+- **Independent review** \u{2014} PASS/FAIL verification of claimed work (`reviewer`)
 - **Multi-step implementation** \u{2014} any task involving more than reading (`general-purpose`)
-- **Any research requiring thoroughness** \u{2014} don\u{2019}t do shallow searches yourself, spawn an `explore` subagent
+- **Any research requiring thoroughness** \u{2014} don\u{2019}t do shallow searches yourself, spawn an `explore` (and `librarian` when external truth matters)
 
 ### How to talk to subagents:
 Write prompts the way you would brief a senior engineer:
@@ -131,9 +134,14 @@ Write prompts the way you would brief a senior engineer:
 
 ### Parallelism:
 - Break independent tasks into separate subagents and run them in parallel
-- Use `explore` subagents to investigate multiple areas simultaneously
+- Use `explore` + `librarian` together for research waves before planning or coding
 - Launch implementation subagents for independent files/modules at the same time
 - Do NOT wait for one subagent before spawning others that don\u{2019}t depend on it
+
+### Ultrawork discipline (when the user says ulw / ultrawork / /ulw-*):
+- Fan out research first (`explore` + `librarian`), then plan, then implement
+- Treat \"I think it\u{2019}s done\" as insufficient \u{2014} spawn `reviewer` (or run verification) before claiming completion
+- Prefer goals and acceptance criteria over step-by-step recipes for workers
 
 ### Anti-patterns to avoid:
 - Do NOT do shallow 1-2 file reads yourself when an `explore` agent would be more thorough
@@ -224,6 +232,9 @@ fn native_toolset_presets() -> Vec<(&'static str, ToolServerConfig)> {
         ("codex", codex_toolset()),
         ("explore", explore_toolset()),
         ("plan", plan_toolset()),
+        ("librarian", librarian_toolset()),
+        ("oracle", oracle_toolset()),
+        ("reviewer", reviewer_toolset()),
         ("grok-computer", grok_computer_toolset()),
     ]
 }
@@ -381,6 +392,47 @@ fn plan_toolset() -> ToolServerConfig {
             (&grok_build::ListDirTool).into(),
             (&grok_build::GrepTool).into(),
             (&grok_build::TodoWriteTool).into(),
+        ],
+        behavior_preset: None,
+    }
+}
+/// Librarian toolset — read-only repo inspection plus web research tools.
+///
+/// `web_search` / `web_fetch` are listed explicitly so docs research works even
+/// when default hosted-tool injection is disabled for a child session.
+fn librarian_toolset() -> ToolServerConfig {
+    ToolServerConfig {
+        tools: vec![
+            (&grok_build::ReadFileTool).into(),
+            (&grok_build::ListDirTool).into(),
+            (&grok_build::GrepTool).into(),
+            (&grok_build::WebSearchTool).into(),
+            (&grok_build::WebFetchTool).into(),
+        ],
+        behavior_preset: None,
+    }
+}
+/// Oracle toolset — deep read-only analysis (no shell, no edits).
+fn oracle_toolset() -> ToolServerConfig {
+    ToolServerConfig {
+        tools: vec![
+            (&grok_build::ReadFileTool).into(),
+            (&grok_build::ListDirTool).into(),
+            (&grok_build::GrepTool).into(),
+        ],
+        behavior_preset: None,
+    }
+}
+/// Reviewer toolset — inspect + run verification commands, no file edits.
+fn reviewer_toolset() -> ToolServerConfig {
+    ToolServerConfig {
+        tools: vec![
+            bash_tool_config(),
+            (&grok_build::ReadFileTool).into(),
+            (&grok_build::ListDirTool).into(),
+            (&grok_build::GrepTool).into(),
+            kill_task_tool_config(),
+            task_output_tool_config(),
         ],
         behavior_preset: None,
     }
@@ -647,9 +699,9 @@ where
 /// are defined in exactly one place. The enum covers all built-in
 /// agents for centralized name management and `by_name()` dispatch.
 ///
-/// `subagent_variants()` returns only the 3 that are exposed to the LLM
-/// via the `TaskTool` description. The remaining 6 are top-level agent
-/// profiles resolvable by name but not advertised as subagent types.
+/// `subagent_variants()` returns the built-ins exposed to the LLM via the
+/// `TaskTool` / `spawn_subagent` description. Remaining variants are top-level
+/// agent profiles resolvable by name but not advertised as subagent types.
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Hash, Display, EnumString, EnumIter, AsRefStr, IntoStaticStr,
 )]
@@ -665,6 +717,9 @@ pub enum BuiltinAgentName {
     GeneralPurpose,
     Explore,
     Plan,
+    Librarian,
+    Oracle,
+    Reviewer,
     BrowserUse,
     #[strum(serialize = "grok-build-orchestrator")]
     GrokBuildOrchestrator,
@@ -694,13 +749,23 @@ impl BuiltinAgentName {
             Self::GeneralPurpose => AgentDefinition::general_purpose(),
             Self::Explore => AgentDefinition::explore(),
             Self::Plan => AgentDefinition::plan(),
+            Self::Librarian => AgentDefinition::librarian(),
+            Self::Oracle => AgentDefinition::oracle(),
+            Self::Reviewer => AgentDefinition::reviewer(),
             Self::BrowserUse => AgentDefinition::browser_use(),
             Self::GrokBuildOrchestrator => AgentDefinition::grok_build_orchestrator(),
         }
     }
     /// Built-in agents available as subagents via the Task tool.
     pub fn subagent_variants() -> &'static [Self] {
-        &[Self::GeneralPurpose, Self::Explore, Self::Plan]
+        &[
+            Self::GeneralPurpose,
+            Self::Explore,
+            Self::Plan,
+            Self::Librarian,
+            Self::Oracle,
+            Self::Reviewer,
+        ]
     }
 }
 /// Portable agent identity — parsed from .grok/agents/*.md.
@@ -1556,6 +1621,45 @@ impl AgentDefinition {
             ..Self::base(BuiltinAgentName::Plan, "")
         }
     }
+    /// Librarian subagent — docs / contracts / external research.
+    pub fn librarian() -> Self {
+        use crate::prompt::subagent_prompts;
+        Self {
+            description: xai_tool_types::LIBRARIAN_SUBAGENT.description.to_string(),
+            tool_config: librarian_toolset(),
+            permission_mode: PermissionMode::Plan,
+            prompt_body: Some(subagent_prompts::LIBRARIAN_PROMPT.to_string()),
+            inherit_skills: false,
+            inject_default_tools: false,
+            ..Self::base(BuiltinAgentName::Librarian, "")
+        }
+    }
+    /// Oracle subagent — deep architecture advice (read-only).
+    pub fn oracle() -> Self {
+        use crate::prompt::subagent_prompts;
+        Self {
+            description: xai_tool_types::ORACLE_SUBAGENT.description.to_string(),
+            tool_config: oracle_toolset(),
+            permission_mode: PermissionMode::Plan,
+            prompt_body: Some(subagent_prompts::ORACLE_PROMPT.to_string()),
+            inherit_skills: false,
+            inject_default_tools: false,
+            ..Self::base(BuiltinAgentName::Oracle, "")
+        }
+    }
+    /// Reviewer subagent — independent verification (no edits).
+    pub fn reviewer() -> Self {
+        use crate::prompt::subagent_prompts;
+        Self {
+            description: xai_tool_types::REVIEWER_SUBAGENT.description.to_string(),
+            tool_config: reviewer_toolset(),
+            permission_mode: PermissionMode::Default,
+            prompt_body: Some(subagent_prompts::REVIEWER_PROMPT.to_string()),
+            inherit_skills: false,
+            inject_default_tools: false,
+            ..Self::base(BuiltinAgentName::Reviewer, "")
+        }
+    }
     /// Browser Use agent definition.
     pub fn browser_use() -> Self {
         Self {
@@ -1645,6 +1749,9 @@ mod tests {
             "codex",
             "explore",
             "plan",
+            "librarian",
+            "oracle",
+            "reviewer",
             "grok-computer",
             "grok_computer",
         ] {
@@ -1770,7 +1877,11 @@ mod tests {
     /// until classified.
     fn expected_strict_harness(name: BuiltinAgentName) -> bool {
         match name {
-            BuiltinAgentName::Codex | BuiltinAgentName::GrokBuildOrchestrator => true,
+            BuiltinAgentName::Codex
+            | BuiltinAgentName::GrokBuildOrchestrator
+            | BuiltinAgentName::Librarian
+            | BuiltinAgentName::Oracle
+            | BuiltinAgentName::Reviewer => true,
             BuiltinAgentName::GrokBuild
             | BuiltinAgentName::GrokBuildConcise
             | BuiltinAgentName::GrokBuildPlan
@@ -1801,7 +1912,13 @@ mod tests {
     }
     #[test]
     fn is_strict_harness_agent_type_classifies_by_name() {
-        for strict in ["codex", "grok-build-orchestrator"] {
+        for strict in [
+            "codex",
+            "grok-build-orchestrator",
+            "librarian",
+            "oracle",
+            "reviewer",
+        ] {
             assert!(
                 is_strict_harness_agent_type(strict),
                 "{strict} should be strict"
@@ -2424,6 +2541,9 @@ description: Test default tool config
             ("general-purpose", BuiltinAgentName::GeneralPurpose),
             ("explore", BuiltinAgentName::Explore),
             ("plan", BuiltinAgentName::Plan),
+            ("librarian", BuiltinAgentName::Librarian),
+            ("oracle", BuiltinAgentName::Oracle),
+            ("reviewer", BuiltinAgentName::Reviewer),
             ("browser-use", BuiltinAgentName::BrowserUse),
         ] {
             let parsed = BuiltinAgentName::from_str(s).unwrap();
@@ -2453,10 +2573,13 @@ description: Test default tool config
     #[test]
     fn test_builtin_agent_name_subagent_variants() {
         let variants = BuiltinAgentName::subagent_variants();
-        assert_eq!(variants.len(), 3);
+        assert_eq!(variants.len(), 6);
         assert!(variants.contains(&BuiltinAgentName::GeneralPurpose));
         assert!(variants.contains(&BuiltinAgentName::Explore));
         assert!(variants.contains(&BuiltinAgentName::Plan));
+        assert!(variants.contains(&BuiltinAgentName::Librarian));
+        assert!(variants.contains(&BuiltinAgentName::Oracle));
+        assert!(variants.contains(&BuiltinAgentName::Reviewer));
     }
     #[test]
     fn test_all_builtins_have_inherit_model() {

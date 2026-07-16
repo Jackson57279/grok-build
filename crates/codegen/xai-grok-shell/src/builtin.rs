@@ -4,6 +4,7 @@ const BUNDLED_FILES: &[(&str, &str)] = &[("README.md", include_str!("../README.m
 
 const HELP_SKILL_MD: &str = include_str!("../skills/help/SKILL.md");
 const CREATE_SKILL_MD: &str = include_str!("../skills/create-skill/SKILL.md");
+const CREATE_AGENT_MD: &str = include_str!("../skills/create-agent/SKILL.md");
 const CODE_REVIEW_SKILL_MD: &str = include_str!("../skills/code-review/SKILL.md");
 const IMAGINE_SKILL_MD: &str = include_str!("../skills/imagine/SKILL.md");
 /// Compiled-in SKILL.md content for `/check-work` (available to headless mode).
@@ -11,6 +12,11 @@ pub const CHECK_SKILL_MD: &str = include_str!("../skills/check-work/SKILL.md");
 /// Compiled-in SKILL.md content for headless `--best-of-n` (not extracted as
 /// a bundled skill).
 pub const BEST_OF_N_SKILL_MD: &str = include_str!("../skills/best-of-n/SKILL.md");
+const ULW_SKILL_MD: &str = include_str!("../skills/ulw/SKILL.md");
+const ULW_PLAN_SKILL_MD: &str = include_str!("../skills/ulw-plan/SKILL.md");
+const START_WORK_SKILL_MD: &str = include_str!("../skills/start-work/SKILL.md");
+const ULW_LOOP_SKILL_MD: &str = include_str!("../skills/ulw-loop/SKILL.md");
+const INIT_DEEP_SKILL_MD: &str = include_str!("../skills/init-deep/SKILL.md");
 
 /// Legacy bundled skill names (renamed or removed).
 ///
@@ -55,9 +61,15 @@ const LEGACY_BUNDLED_SKILL_NAMES: &[&str] = &["check", "best-of-n", "docx", "ppt
 const BUNDLED_SKILLS: &[(&str, &str)] = &[
     ("help", HELP_SKILL_MD),
     ("create-skill", CREATE_SKILL_MD),
+    ("create-agent", CREATE_AGENT_MD),
     ("code-review", CODE_REVIEW_SKILL_MD),
     ("imagine", IMAGINE_SKILL_MD),
     ("check-work", CHECK_SKILL_MD),
+    ("ulw", ULW_SKILL_MD),
+    ("ulw-plan", ULW_PLAN_SKILL_MD),
+    ("start-work", START_WORK_SKILL_MD),
+    ("ulw-loop", ULW_LOOP_SKILL_MD),
+    ("init-deep", INIT_DEEP_SKILL_MD),
 ];
 
 /// True when a discovered skill is the copy `extract_bundled_files` wrote to

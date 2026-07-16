@@ -4,6 +4,32 @@ Grok supports several authentication methods, including interactive browser logi
 
 ---
 
+# Cursor Usage (LLM Bridge)
+
+To bill inference to your Cursor plan instead of xAI:
+
+```bash
+# Install bridge deps once
+(cd scripts/cursor-bridge && bun install)
+
+# Sign in (reuses ~/.config/cursor/auth.json or opens agent login)
+grok login --cursor
+```
+
+This writes `[auth] preferred_provider = "cursor"` to `~/.grok/config.toml`, starts a local OpenAI-compatible bridge backed by `@cursor/sdk`, and defaults the model to **Grok 4.5 (Cursor)** (`grok-4.5` via Cursor).
+
+Env overrides:
+
+| Variable | Purpose |
+|----------|---------|
+| `GROK_AUTH_PROVIDER=cursor` | Force Cursor provider without editing config |
+| `CURSOR_API_KEY` | Cursor API key (Dashboard → API Keys) |
+| `GROK_CURSOR_BRIDGE_DIR` | Override path to `scripts/cursor-bridge` |
+
+Grok's agent tools stay local; only model tokens go through Cursor.
+
+---
+
 ## Browser Login (Default)
 
 On first launch, Grok opens your browser to authenticate with grok.com:

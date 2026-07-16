@@ -1,3 +1,5 @@
 /target
 **/*.rs.bk
 .DS_Store
+scripts/cursor-bridge/node_modules/
+scripts/cursor-bridge/bun.lock

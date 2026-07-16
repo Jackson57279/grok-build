@@ -23,15 +23,18 @@ pub enum Command {
         #[arg(long, hide = true)]
         legacy: bool,
         /// Use Grok OAuth via auth.x.ai.
-        #[arg(long = "oauth", alias = "oidc", conflicts_with_all = ["device_auth"])]
+        #[arg(long = "oauth", alias = "oidc", conflicts_with_all = ["device_auth", "cursor"])]
         oauth: bool,
         /// Use device-code authentication for headless/remote environments.
         #[arg(
             long = "device-auth",
             visible_alias = "device-code",
-            conflicts_with_all = ["oauth"]
+            conflicts_with_all = ["oauth", "cursor"]
         )]
         device_auth: bool,
+        /// Sign in with Cursor and bill model usage to your Cursor plan.
+        #[arg(long = "cursor", conflicts_with_all = ["oauth", "device_auth"])]
+        cursor: bool,
         /// Authenticate for remote development environments (hidden).
         ///
         /// Field is always present so match arms stay feature-unification-safe

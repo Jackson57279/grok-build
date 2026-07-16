@@ -1207,9 +1207,8 @@ const TASK_TOOL_NAMING: xai_tool_types::TaskToolNaming<'static> = xai_tool_types
 /// Concise task-tool description for child sessions. Delegation from a child
 /// is possible but discouraged — prefer doing the work directly.
 ///
-/// NOTE: This hardcodes the built-in agent type names ("general-purpose",
-/// "explore", "plan"). If custom child-visible subagent types become common,
-/// consider generating this list dynamically like the parent description does.
+/// NOTE: This hardcodes common built-in agent type names. Custom child-visible
+/// types from `.grok/agents/` may also be available on the parent.
 const CHILD_TASK_DESCRIPTION: &str = "\
 Launch a sub-agent to handle a specific sub-task. Use this only when \n\
 the sub-task is clearly independent and would benefit from a separate \n\
@@ -1217,7 +1216,7 @@ context (e.g., a parallel search while you continue working).\n\
 \n\
 Prefer doing the work yourself unless delegation is clearly necessary.\n\
 \n\
-Usage: specify ${{ params.task.subagent_type }} (\"general-purpose\", \"explore\", or \"plan\"), \n\
+Usage: specify ${{ params.task.subagent_type }} (\"general-purpose\", \"explore\", \"plan\", \"librarian\", \"oracle\", or \"reviewer\"), \n\
 a short ${{ params.task.description }}, and a detailed ${{ params.task.prompt }}.\n\
 ${{ params.task.run_in_background }}: Returns immediately with a subagent_id. Use the task output tool to retrieve results. This is set to true by default.";
 /// CLI [`xai_tool_types::SubagentToolNaming`]: each kind maps to its
@@ -1243,6 +1242,9 @@ fn builtin_tools_fragment(name: BuiltinAgentName) -> String {
         BuiltinAgentName::GeneralPurpose => xai_tool_types::GENERAL_PURPOSE_SUBAGENT,
         BuiltinAgentName::Explore => xai_tool_types::EXPLORE_SUBAGENT,
         BuiltinAgentName::Plan => xai_tool_types::PLAN_SUBAGENT,
+        BuiltinAgentName::Librarian => xai_tool_types::LIBRARIAN_SUBAGENT,
+        BuiltinAgentName::Oracle => xai_tool_types::ORACLE_SUBAGENT,
+        BuiltinAgentName::Reviewer => xai_tool_types::REVIEWER_SUBAGENT,
         _ => return String::new(),
     };
     subagent.render_tools(&SUBAGENT_TOOL_NAMING)

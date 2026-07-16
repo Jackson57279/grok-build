@@ -1223,10 +1223,16 @@ mod tests {
         let gp = super::super::subagent_prompts::GENERAL_PURPOSE_PROMPT;
         let explore = super::super::subagent_prompts::EXPLORE_PROMPT;
         let plan = super::super::subagent_prompts::PLAN_PROMPT;
+        let librarian = super::super::subagent_prompts::LIBRARIAN_PROMPT;
+        let oracle = super::super::subagent_prompts::ORACLE_PROMPT;
+        let reviewer = super::super::subagent_prompts::REVIEWER_PROMPT;
         for (name, prompt) in [
             ("general-purpose", gp),
             ("explore", explore),
             ("plan", plan),
+            ("librarian", librarian),
+            ("oracle", oracle),
+            ("reviewer", reviewer),
         ] {
             assert!(
                 !prompt.contains("You are a Grok Build agent"),
@@ -1239,10 +1245,16 @@ mod tests {
         let gp = super::super::subagent_prompts::GENERAL_PURPOSE_PROMPT;
         let explore = super::super::subagent_prompts::EXPLORE_PROMPT;
         let plan = super::super::subagent_prompts::PLAN_PROMPT;
+        let librarian = super::super::subagent_prompts::LIBRARIAN_PROMPT;
+        let oracle = super::super::subagent_prompts::ORACLE_PROMPT;
+        let reviewer = super::super::subagent_prompts::REVIEWER_PROMPT;
         for (name, prompt) in [
             ("general-purpose", gp),
             ("explore", explore),
             ("plan", plan),
+            ("librarian", librarian),
+            ("oracle", oracle),
+            ("reviewer", reviewer),
         ] {
             assert!(
                 !prompt.contains("avoid using emojis"),
@@ -1255,10 +1267,16 @@ mod tests {
         let gp = super::super::subagent_prompts::GENERAL_PURPOSE_PROMPT;
         let explore = super::super::subagent_prompts::EXPLORE_PROMPT;
         let plan = super::super::subagent_prompts::PLAN_PROMPT;
+        let librarian = super::super::subagent_prompts::LIBRARIAN_PROMPT;
+        let oracle = super::super::subagent_prompts::ORACLE_PROMPT;
+        let reviewer = super::super::subagent_prompts::REVIEWER_PROMPT;
         for (name, prompt) in [
             ("general-purpose", gp),
             ("explore", explore),
             ("plan", plan),
+            ("librarian", librarian),
+            ("oracle", oracle),
+            ("reviewer", reviewer),
         ] {
             assert!(
                 prompt.contains("${{ tools.by_kind."),

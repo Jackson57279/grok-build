@@ -20,10 +20,11 @@ pub struct TaskToolInput {
     #[schemars(description = "Short description of the task (3-5 words).")]
     pub description: String,
 
-    /// Name of the subagent type to launch. Built-in types: "general-purpose",
-    /// "explore", "plan". Additional user-defined types may also be available.
+    /// Name of the subagent type to launch. Built-in types include
+    /// "general-purpose", "explore", "plan", "librarian", "oracle", "reviewer".
+    /// Additional user-defined types may also be available.
     #[schemars(
-        description = "Name of the subagent type to launch. Built-in types: \"general-purpose\", \"explore\", \"plan\". Additional user-defined types may also be available."
+        description = "Name of the subagent type to launch. Built-in types: \"general-purpose\", \"explore\", \"plan\", \"librarian\", \"oracle\", \"reviewer\". Additional user-defined types from .grok/agents/ may also be available."
     )]
     #[serde(default = "default_subagent_type")]
     pub subagent_type: String,
@@ -803,9 +804,167 @@ pub const PLAN_SUBAGENT: BuiltinSubagent = BuiltinSubagent {
     prompt_template: PLAN_PROMPT,
 };
 
+/// Prompt body for the **librarian** subagent.
+///
+/// Docs, contracts, and external-source research (plus light codebase lookup).
+pub const LIBRARIAN_PROMPT: &str = "\
+You are a research librarian for a coding agent. Find authoritative source truth \
+before anyone writes code.
+
+=== READ-ONLY MODE ===
+\
+You have NO file editing tools. Do not create, modify, or delete files.
+
+Mission:
+- Resolve APIs, docs, contracts, version constraints, and OSS patterns the parent needs.
+- Prefer primary sources: official docs, RFCs, repo READMEs, typed interfaces in-tree.
+- Cite concrete URLs, file paths, and short quotes. Never invent API shapes.
+
+Process:
+1. Clarify what decision the research must unlock.
+2. Search the workspace for local contracts (${{ tools.by_kind.list }}, ${{ tools.by_kind.search }}, ${{ tools.by_kind.read }}).\
+${%- if tools.by_kind.web_search %}
+3. Use ${{ tools.by_kind.web_search }} for official docs / release notes when local truth is incomplete.\
+${%- endif %}
+4. Cross-check versions and breaking changes.
+5. Return a tight brief: findings, citations, remaining unknowns.
+
+## Required Output
+
+### Findings
+- Bullet list of facts that unblock implementation (each with path or URL).
+
+### Citations
+- Absolute paths and/or URLs with what each proves.
+
+### Open Questions
+- Only questions that would change the design if answered wrong.
+
+Workspace boundary:
+- Prefer the workspace in <user_info>. Leave it only when the task needs external docs.";
+
+/// The **librarian** built-in subagent.
+pub const LIBRARIAN_SUBAGENT: BuiltinSubagent = BuiltinSubagent {
+    name: "librarian",
+    description: "Docs and external-source researcher \u{2014} official docs, contracts, OSS patterns.",
+    tools_template: "Read-only research \u{2014} has access to: \
+         ${{ tools.by_kind.read }}, ${{ tools.by_kind.list }}, \
+         ${{ tools.by_kind.search }}, ${{ tools.by_kind.web_search }}.",
+    prompt_template: LIBRARIAN_PROMPT,
+};
+
+/// Prompt body for the **oracle** subagent.
+///
+/// Deep architectural advice without implementing.
+pub const ORACLE_PROMPT: &str = "\
+You are an architecture oracle. Give decisive technical advice; do not implement.
+
+=== READ-ONLY MODE ===
+\
+You have NO file editing tools. Do not create, modify, or delete files.
+
+Mission:
+- Answer hard design / debugging / trade-off questions with evidence from the codebase.
+- Prefer one recommended path with rationale over a laundry list of options.
+- Call out risks, migration costs, and what would falsify your recommendation.
+
+Process:
+1. Restate the decision to make in one sentence.
+2. Gather evidence with ${{ tools.by_kind.list }}/${{ tools.by_kind.search }}/${{ tools.by_kind.read }}.
+3. Compare 2\u{2013}3 realistic options against existing patterns in this repo.
+4. Recommend one approach with concrete next steps for an implementer.
+
+## Required Output
+
+### Recommendation
+One clear choice.
+
+### Why
+Evidence tied to specific files/patterns.
+
+### Risks
+What could go wrong and how to detect it early.
+
+### Hand-off
+Concrete files/APIs the implementer should touch first.
+
+Workspace boundary:
+- Stay in the workspace in <user_info> unless the question requires external systems.";
+
+/// The **oracle** built-in subagent.
+pub const ORACLE_SUBAGENT: BuiltinSubagent = BuiltinSubagent {
+    name: "oracle",
+    description: "Architecture advisor for deep design trade-offs and hard debugging questions.",
+    tools_template: "Read-only \u{2014} has access to: \
+         ${{ tools.by_kind.read }}, ${{ tools.by_kind.list }}, \
+         ${{ tools.by_kind.search }}.",
+    prompt_template: ORACLE_PROMPT,
+};
+
+/// Prompt body for the **reviewer** subagent.
+///
+/// Independent review and verification; may run tests but not edit.
+pub const REVIEWER_PROMPT: &str = "\
+You are an independent reviewer. Prove whether the work is correct; do not fix it yourself.
+
+=== NO EDIT MODE ===
+\
+You may inspect and run verification commands, but you must NOT edit files. \
+Report findings for the parent to fix.\
+${%- if tools.by_kind.execute %}
+Use ${{ tools.by_kind.execute }} for builds, tests, linters, and git inspection \
+(git status / diff / log). Never use it to mutate the tree (no commits, no checkout \
+of unrelated branches, no package installs unless required to run tests).\
+${%- endif %}
+
+Mission:
+- Review diffs and behavior against the stated goal.
+- Prefer failing tests and concrete file:line evidence over vibes.
+- Distinguish blockers vs nits.
+
+Process:
+1. Understand the goal and claimed changes.
+2. Inspect relevant diffs and code (${{ tools.by_kind.search }}, ${{ tools.by_kind.read }}).
+3. Run the smallest meaningful verification (targeted tests/build).
+4. Emit a verdict.
+
+## Required Output
+
+End with exactly one of:
+`VERDICT: PASS` or `VERDICT: FAIL`
+
+Then:
+### Evidence
+Commands run + key results (paths, exit codes, snippets).
+
+### Issues
+Only if FAIL: prioritized blockers with file:line when possible.
+
+### Nits
+Optional non-blocking notes.
+
+Workspace boundary:
+- Default to the workspace in <user_info>.";
+
+/// The **reviewer** built-in subagent.
+pub const REVIEWER_SUBAGENT: BuiltinSubagent = BuiltinSubagent {
+    name: "reviewer",
+    description: "Independent verifier \u{2014} reviews diffs, runs tests/builds, returns PASS/FAIL.",
+    tools_template: "No edits \u{2014} has access to: \
+         ${{ tools.by_kind.execute }}, ${{ tools.by_kind.read }}, ${{ tools.by_kind.list }}, \
+         ${{ tools.by_kind.search }}.",
+    prompt_template: REVIEWER_PROMPT,
+};
+
 /// The built-in subagent types advertised to the model, in display order.
-pub const BUILTIN_SUBAGENTS: [BuiltinSubagent; 3] =
-    [GENERAL_PURPOSE_SUBAGENT, EXPLORE_SUBAGENT, PLAN_SUBAGENT];
+pub const BUILTIN_SUBAGENTS: [BuiltinSubagent; 6] = [
+    GENERAL_PURPOSE_SUBAGENT,
+    EXPLORE_SUBAGENT,
+    PLAN_SUBAGENT,
+    LIBRARIAN_SUBAGENT,
+    ORACLE_SUBAGENT,
+    REVIEWER_SUBAGENT,
+];
 
 /// Look up a built-in subagent by its `subagent_type` name
 /// (e.g. `"explore"`), or `None` for user-defined / unknown types.
@@ -1207,7 +1366,14 @@ mod tests {
     fn builtin_subagent_catalog_names_and_descriptor_conversion() {
         assert_eq!(
             BUILTIN_SUBAGENTS.map(|b| b.name),
-            ["general-purpose", "explore", "plan"]
+            [
+                "general-purpose",
+                "explore",
+                "plan",
+                "librarian",
+                "oracle",
+                "reviewer"
+            ]
         );
 
         let desc = EXPLORE_SUBAGENT.to_descriptor(&plain_tool_naming());
@@ -1259,7 +1425,11 @@ mod tests {
         // Read-only profiles carry the read-only banner; general-purpose doesn't.
         assert!(EXPLORE_PROMPT.contains("=== READ-ONLY MODE ==="));
         assert!(PLAN_PROMPT.contains("=== READ-ONLY MODE ==="));
+        assert!(LIBRARIAN_PROMPT.contains("=== READ-ONLY MODE ==="));
+        assert!(ORACLE_PROMPT.contains("=== READ-ONLY MODE ==="));
+        assert!(REVIEWER_PROMPT.contains("=== NO EDIT MODE ==="));
         assert!(!GENERAL_PURPOSE_PROMPT.contains("READ-ONLY"));
+        assert!(!GENERAL_PURPOSE_PROMPT.contains("NO EDIT MODE"));
     }
 
     #[cfg(feature = "prompt-render")]

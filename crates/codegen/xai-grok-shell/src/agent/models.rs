@@ -415,6 +415,18 @@ impl ModelsManager {
         }
     }
 
+    /// Insert/replace the Cursor-labeled Grok model and select it, then notify clients.
+    pub fn ensure_cursor_model(&self, bridge: &crate::cursor::BridgeInfo) {
+        let entry = crate::cursor::cursor_default_model_entry(bridge);
+        let catalog_id = crate::cursor::CURSOR_CATALOG_MODEL_ID;
+        self.inner
+            .models
+            .write()
+            .insert(catalog_id.to_owned(), entry);
+        self.set_current_model_id(acp::ModelId::new(catalog_id));
+        self.notify_models_updated();
+    }
+
     /// Look up the per-model Layer-3 LazinessDetector config for the
     /// model identified by `model_id`. Returns the default (disabled)
     /// config when the id isn't in the catalog — same fallback

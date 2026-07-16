@@ -489,6 +489,14 @@ Log in or re-authenticate with your account without leaving the session.
 /login
 ```
 
+### `/connect`
+
+Connect your Cursor account so model usage bills to Cursor (default model: Grok 4.5 (Cursor) / `grok-4.5`).
+
+```
+/connect
+```
+
 ### `/logout`
 
 Log out and return to the login screen.

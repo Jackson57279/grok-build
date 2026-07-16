@@ -291,6 +291,7 @@ pub enum AuthMethodKind {
     CachedToken,
     GrokCom,
     Oidc,
+    Cursor,
     Unknown,
 }
 
@@ -301,6 +302,7 @@ impl AuthMethodKind {
             CACHED_TOKEN_AUTH_METHOD_ID => Self::CachedToken,
             GROK_COM_METHOD_ID => Self::GrokCom,
             OIDC_METHOD_ID => Self::Oidc,
+            CURSOR_METHOD_ID => Self::Cursor,
             _ => Self::Unknown,
         }
     }
@@ -316,15 +318,21 @@ impl AuthMethodKind {
     }
 
     /// Requires user interaction (browser, OIDC redirect, or external auth command).
+    ///
+    /// Cursor is intentionally non-interactive at the ACP method layer: the
+    /// authenticate handler itself runs `agent login` when no key is present,
+    /// so eager auth can drive the flow without the welcome Login button.
     pub fn needs_interactive_login(self) -> bool {
         matches!(self, Self::GrokCom | Self::Oidc)
     }
 
     pub fn auth_error_message(self) -> &'static str {
-        if self.is_session_based() {
-            AUTH_ERROR_SESSION_EXPIRED
-        } else {
-            AUTH_ERROR_API_KEY
+        match self {
+            Self::CachedToken | Self::GrokCom | Self::Oidc => AUTH_ERROR_SESSION_EXPIRED,
+            Self::Cursor => {
+                "Cursor authentication failed. Run `grok login --cursor` or set CURSOR_API_KEY."
+            }
+            Self::XaiApiKey | Self::Unknown => AUTH_ERROR_API_KEY,
         }
     }
 }
@@ -477,6 +485,27 @@ pub fn oidc_auth_method(issuer: &str, label: Option<&str>) -> acp::AuthMethod {
         acp::AuthMethodAgent::new(acp::AuthMethodId::new(OIDC_METHOD_ID), name.clone())
             .description(Some(format!("Sign in with {name}"))),
     )
+}
+
+pub const CURSOR_METHOD_ID: &str = "cursor";
+pub fn cursor_auth_method() -> acp::AuthMethod {
+    acp::AuthMethod::Agent(
+        acp::AuthMethodAgent::new(
+            acp::AuthMethodId::new(CURSOR_METHOD_ID),
+            "Cursor".to_string(),
+        )
+        .description(Some(
+            "Sign in with Cursor (usage billed to your Cursor plan)".to_string(),
+        )),
+    )
+}
+
+/// Auth methods when Cursor is the preferred provider.
+pub fn build_cursor_auth_methods(_has_cursor_key: bool) -> BuiltAuthMethods {
+    BuiltAuthMethods {
+        methods: vec![cursor_auth_method()],
+        default_auth_method_id: Some(acp::AuthMethodId::new(CURSOR_METHOD_ID)),
+    }
 }
 
 #[cfg(test)]

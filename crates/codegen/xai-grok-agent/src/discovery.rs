@@ -65,7 +65,8 @@ pub enum SubagentSource {
 
 /// Build the complete list of enabled subagents.
 ///
-/// 1. Start with built-in subagent definitions (general-purpose, explore, plan)
+/// 1. Start with built-in subagent definitions (general-purpose, explore, plan,
+///    librarian, oracle, reviewer)
 /// 2. Discover user-defined agents from project, user, and bundled agent dirs
 /// 3. Merge: project-level user agents shadow built-ins with the same name;
 ///    user-level and bundled agents with built-in names are skipped (maintains
@@ -951,14 +952,14 @@ mod tests {
         fs::create_dir_all(&user_dir).unwrap();
         fs::create_dir_all(&bundled_dir).unwrap();
 
-        write_agent_file(&user_dir, "reviewer.md", "reviewer", "User reviewer");
-        write_agent_file(&bundled_dir, "reviewer.md", "reviewer", "Bundled reviewer");
+        write_agent_file(&user_dir, "ship-bot.md", "ship-bot", "User ship-bot");
+        write_agent_file(&bundled_dir, "ship-bot.md", "ship-bot", "Bundled ship-bot");
 
         let def =
-            by_name_in_cwd_with_home("reviewer", &cwd, Some(&home), Some(&home.join(".grok")))
+            by_name_in_cwd_with_home("ship-bot", &cwd, Some(&home), Some(&home.join(".grok")))
                 .unwrap();
         assert_eq!(def.scope, AgentScope::User);
-        assert_eq!(def.description, "User reviewer");
+        assert_eq!(def.description, "User ship-bot");
     }
 
     #[test]
@@ -988,14 +989,14 @@ mod tests {
         fs::create_dir_all(&project_dir).unwrap();
         fs::create_dir_all(&bundled_dir).unwrap();
 
-        write_agent_file(&project_dir, "reviewer.md", "reviewer", "Project reviewer");
-        write_agent_file(&bundled_dir, "reviewer.md", "reviewer", "Bundled reviewer");
+        write_agent_file(&project_dir, "ship-bot.md", "ship-bot", "Project ship-bot");
+        write_agent_file(&bundled_dir, "ship-bot.md", "ship-bot", "Bundled ship-bot");
 
         let def =
-            by_name_in_cwd_with_home("reviewer", &cwd, Some(&home), Some(&home.join(".grok")))
+            by_name_in_cwd_with_home("ship-bot", &cwd, Some(&home), Some(&home.join(".grok")))
                 .unwrap();
         assert_eq!(def.scope, AgentScope::Project);
-        assert_eq!(def.description, "Project reviewer");
+        assert_eq!(def.description, "Project ship-bot");
     }
 
     #[test]
@@ -1074,13 +1075,17 @@ mod tests {
     }
 
     #[test]
-    fn test_merge_returns_3_builtins_when_no_user_agents() {
+    fn test_merge_returns_builtins_when_no_user_agents() {
         let entries = merge_subagents(vec![], &HashMap::new());
-        assert_eq!(entries.len(), 3);
+        let expected = BuiltinAgentName::subagent_variants().len();
+        assert_eq!(entries.len(), expected);
         let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
         assert!(names.contains(&"general-purpose"));
         assert!(names.contains(&"explore"));
         assert!(names.contains(&"plan"));
+        assert!(names.contains(&"librarian"));
+        assert!(names.contains(&"oracle"));
+        assert!(names.contains(&"reviewer"));
         // All should be Builtin source
         for entry in &entries {
             assert!(
@@ -1096,7 +1101,10 @@ mod tests {
     fn test_merge_filters_toggled_off_builtins() {
         let toggle = HashMap::from([("plan".to_string(), false)]);
         let entries = merge_subagents(vec![], &toggle);
-        assert_eq!(entries.len(), 2);
+        assert_eq!(
+            entries.len(),
+            BuiltinAgentName::subagent_variants().len() - 1
+        );
         let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
         assert!(names.contains(&"general-purpose"));
         assert!(names.contains(&"explore"));
@@ -1111,7 +1119,8 @@ mod tests {
             AgentScope::Project,
         )];
         let entries = merge_subagents(discovered, &HashMap::new());
-        assert_eq!(entries.len(), 4); // 3 built-ins + 1 user
+        let expected = BuiltinAgentName::subagent_variants().len() + 1;
+        assert_eq!(entries.len(), expected); // builtins + 1 user
         let cr = entries.iter().find(|e| e.name == "code-reviewer").unwrap();
         assert_eq!(cr.description, "Reviews code");
         assert_eq!(
@@ -1132,7 +1141,7 @@ mod tests {
         )];
         let toggle = HashMap::from([("code-reviewer".to_string(), false)]);
         let entries = merge_subagents(discovered, &toggle);
-        assert_eq!(entries.len(), 3); // only built-ins
+        assert_eq!(entries.len(), BuiltinAgentName::subagent_variants().len()); // only built-ins
         assert!(entries.iter().all(|e| e.name != "code-reviewer"));
     }
 
@@ -1144,7 +1153,7 @@ mod tests {
             AgentScope::Project,
         )];
         let entries = merge_subagents(discovered, &HashMap::new());
-        assert_eq!(entries.len(), 3); // still 3 — replaced, not appended
+        assert_eq!(entries.len(), BuiltinAgentName::subagent_variants().len()); // replaced, not appended
         let explore = entries.iter().find(|e| e.name == "explore").unwrap();
         assert_eq!(explore.description, "Custom explore agent");
         assert_eq!(
@@ -1181,7 +1190,7 @@ mod tests {
             AgentScope::User,
         )];
         let entries = merge_subagents(discovered, &HashMap::new());
-        assert_eq!(entries.len(), 3); // still 3 built-ins
+        assert_eq!(entries.len(), BuiltinAgentName::subagent_variants().len()); // still builtins
         let explore = entries.iter().find(|e| e.name == "explore").unwrap();
         // Should still be the built-in, not the user-level agent
         assert!(
@@ -1216,14 +1225,15 @@ mod tests {
             AgentScope::User,
         )];
         let entries = merge_subagents(discovered, &HashMap::new());
-        assert_eq!(entries.len(), 4); // 3 built-ins + 1 user
+        let builtin_count = BuiltinAgentName::subagent_variants().len();
+        assert_eq!(entries.len(), builtin_count + 1);
         // Verify ordering: built-ins first, then user
-        assert!(matches!(&entries[0].source, SubagentSource::Builtin(_)));
-        assert!(matches!(&entries[1].source, SubagentSource::Builtin(_)));
-        assert!(matches!(&entries[2].source, SubagentSource::Builtin(_)));
-        assert_eq!(entries[3].name, "migration-helper");
+        for entry in entries.iter().take(builtin_count) {
+            assert!(matches!(&entry.source, SubagentSource::Builtin(_)));
+        }
+        assert_eq!(entries[builtin_count].name, "migration-helper");
         assert_eq!(
-            entries[3].source,
+            entries[builtin_count].source,
             SubagentSource::UserDefined {
                 scope: AgentScope::User
             }
@@ -1238,9 +1248,10 @@ mod tests {
             AgentScope::Bundled,
         )];
         let entries = merge_subagents(discovered, &HashMap::new());
-        assert_eq!(entries[3].name, "bundled-helper");
+        let builtin_count = BuiltinAgentName::subagent_variants().len();
+        assert_eq!(entries[builtin_count].name, "bundled-helper");
         assert_eq!(
-            entries[3].source,
+            entries[builtin_count].source,
             SubagentSource::UserDefined {
                 scope: AgentScope::Bundled
             }
@@ -1249,11 +1260,10 @@ mod tests {
 
     #[test]
     fn test_merge_all_toggled_off_returns_empty() {
-        let toggle = HashMap::from([
-            ("general-purpose".to_string(), false),
-            ("explore".to_string(), false),
-            ("plan".to_string(), false),
-        ]);
+        let toggle: HashMap<String, bool> = BuiltinAgentName::subagent_variants()
+            .iter()
+            .map(|b| (b.as_ref().to_string(), false))
+            .collect();
         let entries = merge_subagents(vec![], &toggle);
         assert!(entries.is_empty(), "all toggled off should return empty");
     }
@@ -1265,7 +1275,7 @@ mod tests {
         // and the built-in explore remains.
         let discovered = vec![]; // no valid user agents discovered
         let entries = merge_subagents(discovered, &HashMap::new());
-        assert_eq!(entries.len(), 3);
+        assert_eq!(entries.len(), BuiltinAgentName::subagent_variants().len());
         let explore = entries.iter().find(|e| e.name == "explore").unwrap();
         assert!(matches!(
             &explore.source,
@@ -1293,14 +1303,14 @@ mod tests {
     #[test]
     fn test_merge_user_beats_bundled_for_visible_equals_callable() {
         let discovered = vec![
-            synthetic_agent("reviewer", "Bundled reviewer", AgentScope::Bundled),
-            synthetic_agent("reviewer", "User reviewer", AgentScope::User),
+            synthetic_agent("ship-bot", "Bundled ship-bot", AgentScope::Bundled),
+            synthetic_agent("ship-bot", "User ship-bot", AgentScope::User),
         ];
         let entries = merge_subagents(discovered, &HashMap::new());
-        let reviewer = entries.iter().find(|e| e.name == "reviewer").unwrap();
-        assert_eq!(reviewer.description, "User reviewer");
+        let ship = entries.iter().find(|e| e.name == "ship-bot").unwrap();
+        assert_eq!(ship.description, "User ship-bot");
         assert_eq!(
-            reviewer.source,
+            ship.source,
             SubagentSource::UserDefined {
                 scope: AgentScope::User
             }
@@ -1321,12 +1331,18 @@ mod tests {
         );
 
         let entries = all_subagents_with_home(tmp.path(), &HashMap::new(), None, None);
-        assert_eq!(entries.len(), 4);
-        let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
         assert_eq!(
-            names,
-            vec!["general-purpose", "explore", "plan", "test-agent"]
+            entries.len(),
+            BuiltinAgentName::subagent_variants().len() + 1
         );
+        let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
+        assert!(names.contains(&"general-purpose"));
+        assert!(names.contains(&"explore"));
+        assert!(names.contains(&"plan"));
+        assert!(names.contains(&"librarian"));
+        assert!(names.contains(&"oracle"));
+        assert!(names.contains(&"reviewer"));
+        assert_eq!(names.last().copied(), Some("test-agent"));
     }
 
     #[test]
@@ -1340,13 +1356,13 @@ mod tests {
         fs::create_dir_all(&user_dir).unwrap();
         fs::create_dir_all(&bundled_dir).unwrap();
 
-        write_agent_file(&user_dir, "reviewer.md", "reviewer", "User reviewer");
-        write_agent_file(&bundled_dir, "reviewer.md", "reviewer", "Bundled reviewer");
+        write_agent_file(&user_dir, "ship-bot.md", "ship-bot", "User ship-bot");
+        write_agent_file(&bundled_dir, "ship-bot.md", "ship-bot", "Bundled ship-bot");
 
         let plugin_root = tempfile::tempdir().unwrap();
         let plugin_agents = plugin_root.path().join("agents");
         fs::create_dir_all(&plugin_agents).unwrap();
-        write_agent_file(&plugin_agents, "reviewer.md", "reviewer", "Plugin reviewer");
+        write_agent_file(&plugin_agents, "ship-bot.md", "ship-bot", "Plugin ship-bot");
 
         let registry = make_plugin_registry("plugin-one", PluginScope::User, vec![plugin_agents]);
         let entries = all_subagents_with_plugins_and_home(
@@ -1357,15 +1373,15 @@ mod tests {
             Some(&home.join(".grok")),
         );
 
-        let native = entries.iter().find(|e| e.name == "reviewer").unwrap();
-        assert_eq!(native.description, "User reviewer");
+        let native = entries.iter().find(|e| e.name == "ship-bot").unwrap();
+        assert_eq!(native.description, "User ship-bot");
         assert_eq!(
             native.source,
             SubagentSource::UserDefined {
                 scope: AgentScope::User
             }
         );
-        assert!(entries.iter().any(|e| e.name == "plugin-one:reviewer"));
+        assert!(entries.iter().any(|e| e.name == "plugin-one:ship-bot"));
     }
 
     #[test]
@@ -1376,16 +1392,16 @@ mod tests {
         let bundled_dir = home.join(".grok").join("bundled").join("agents");
         fs::create_dir_all(&cwd).unwrap();
         fs::create_dir_all(&bundled_dir).unwrap();
-        write_agent_file(&bundled_dir, "reviewer.md", "reviewer", "Bundled reviewer");
+        write_agent_file(&bundled_dir, "ship-bot.md", "ship-bot", "Bundled ship-bot");
 
         let plugin_root = tempfile::tempdir().unwrap();
         let plugin_agents = plugin_root.path().join("agents");
         fs::create_dir_all(&plugin_agents).unwrap();
-        write_agent_file(&plugin_agents, "reviewer.md", "reviewer", "Plugin reviewer");
+        write_agent_file(&plugin_agents, "ship-bot.md", "ship-bot", "Plugin ship-bot");
 
         let registry = make_plugin_registry("plugin-one", PluginScope::User, vec![plugin_agents]);
         let def = by_name_in_cwd_with_plugins_and_home(
-            "reviewer",
+            "ship-bot",
             &cwd,
             Some(&registry),
             Some(&home),
@@ -1394,7 +1410,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(def.scope, AgentScope::Bundled);
-        assert_eq!(def.description, "Bundled reviewer");
+        assert_eq!(def.description, "Bundled ship-bot");
         assert!(def.plugin_name.is_none());
     }
 
@@ -1496,6 +1512,12 @@ mod tests {
         let toggle = HashMap::from([("test-agent".to_string(), false)]);
         let entries = all_subagents_with_home(tmp.path(), &toggle, None, None);
         let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
-        assert_eq!(names, vec!["general-purpose", "explore", "plan"]);
+        assert_eq!(
+            names,
+            BuiltinAgentName::subagent_variants()
+                .iter()
+                .map(|b| b.as_ref())
+                .collect::<Vec<_>>()
+        );
     }
 }

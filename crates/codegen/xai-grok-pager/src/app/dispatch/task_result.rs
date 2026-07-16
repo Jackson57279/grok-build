@@ -12,7 +12,7 @@ use super::cta::{
     handle_plugin_cta_catalog_loaded, handle_plugin_cta_debounce_expired,
     handle_plugin_cta_mcps_loaded,
 };
-use super::ctx::{find_agent_by_session_id, get_active_agent_mut};
+use super::ctx::{find_agent_by_session_id, get_active_agent_mut, restore_auth_return_view};
 use super::notes::{handle_btw_response, handle_memory_note_saved};
 use super::prompt::{
     defer_to_open_reload_window, handle_compact_complete, handle_prompt_response,
@@ -557,8 +557,39 @@ pub(super) fn dispatch_task_result(result: TaskResult, app: &mut AppView) -> Vec
             } = &app.auth_state
                 && *current_seq == request_seq
             {
-                app.auth_state = AuthState::Pending { error: Some(error) };
-                app.auth_code_input.clear();
+                let was_cursor = app
+                    .login_method_id
+                    .as_ref()
+                    .is_some_and(|id| {
+                        id.0.as_ref()
+                            == xai_grok_shell::agent::auth_method::CURSOR_METHOD_ID
+                    });
+                // Mid-session `/connect` or `/login`: restore the session and
+                // surface the error as a toast so it isn't buried on Welcome.
+                if let Some(return_view) = app.auth_return_view.take() {
+                    app.auth_state = AuthState::Done;
+                    app.auth_show_raw_url = false;
+                    app.auth_code_input.clear();
+                    restore_auth_return_view(app, return_view);
+                    let toast = if was_cursor {
+                        format!("Cursor connect failed: {error}")
+                    } else {
+                        format!("Login failed: {error}")
+                    };
+                    app.show_toast(&toast);
+                    if was_cursor {
+                        for agent in app.agents.values_mut() {
+                            agent.scrollback.push_block(
+                                crate::scrollback::block::RenderBlock::system(format!(
+                                    "Cursor connect failed: {error}"
+                                )),
+                            );
+                        }
+                    }
+                } else {
+                    app.auth_state = AuthState::Pending { error: Some(error) };
+                    app.auth_code_input.clear();
+                }
             }
             vec![]
         }

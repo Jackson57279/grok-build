@@ -60,10 +60,25 @@ The `spawn_subagent` tool accepts a `subagent_type` parameter that selects the c
 | Type              | Description                                          |
 | ----------------- | ---------------------------------------------------- |
 | `general-purpose` | Default type. Full-capability agent for any task.    |
-| `explore`         | Research agent. Searches, reads, greps, and runs shell commands, but does not edit files. Use it for codebase investigation. |
-| `plan`            | Planning agent. Explores the codebase and produces a structured implementation plan; does not edit files. |
+| `explore`         | Research agent. Searches, reads, greps — no file edits. Use for codebase investigation. |
+| `plan`            | Planning agent. Explores and produces a structured implementation plan; no file edits. |
+| `librarian`       | Docs / contracts / external research. Read-only plus web search/fetch. |
+| `oracle`          | Architecture advisor for hard design trade-offs and debugging questions; read-only. |
+| `reviewer`        | Independent verifier. Inspects diffs, runs tests/builds, returns `VERDICT: PASS` / `FAIL` — no edits. |
 
-Project- or user-defined agents can add new types or shadow these built-ins by name.
+Project- or user-defined agents can add new types or shadow these built-ins by name (project `.grok/agents/` can shadow; user-level cannot). Use `/create-agent` to scaffold a custom definition.
+
+### Ultrawork workflows
+
+Bundled skills for outcome-first orchestration (still Grok Build — not a Codex port):
+
+| Skill | When |
+| ----- | ---- |
+| `/ulw` | Parallel research → implement → verify |
+| `/ulw-plan` | Write `plans/<slug>.md` only |
+| `/start-work` | Execute plan checkboxes to completion |
+| `/ulw-loop` | Loop until evidence proves done |
+| `/init-deep` | Seed hierarchical `AGENTS.md` |
 
 ---
 
