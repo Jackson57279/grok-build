@@ -1,0 +1,19 @@
+scripts/cursor-bridge/src/index.ts
+  s_69ccdcd9b4a97b::t_ead4a0e4e5fb30 76-88,198-204,209-210,221-252,257,279-312,323,326,350-356,358,369-372,379-382
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "121962e7e4a6265eed6701a51914f14c751140b0",
+  "prompts": {},
+  "sessions": {
+    "s_69ccdcd9b4a97b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-81b6fdb8-e2c0-48b3-8148-1fd2cbfdbe52",
+        "model": "unknown"
+      },
+      "human_author": "Jackson57279 <otdoges@proton.me>"
+    }
+  }
+}
