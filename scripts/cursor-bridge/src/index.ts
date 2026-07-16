@@ -73,6 +73,19 @@ function resolveModel(raw: string | undefined): ModelSelection {
       ],
     };
   }
+  // Catalog ids from Grok's Cursor-connected model list → SDK slugs.
+  const catalogMap: Record<string, string> = {
+    "claude-opus-4.8-cursor": "claude-opus-4-8-thinking-high",
+    "claude-fable-5-cursor": "claude-fable-5-thinking-high",
+    "claude-sonnet-5-cursor": "claude-sonnet-5-thinking-high",
+    "gpt-5.6-sol-cursor": "gpt-5.6-sol-medium",
+    "gpt-5.6-terra-cursor": "gpt-5.6-terra-medium",
+    "composer-2.5-cursor": "composer-2.5",
+    "composer-2.5-fast-cursor": "composer-2.5-fast",
+  };
+  if (catalogMap[id]) {
+    return { id: catalogMap[id] };
+  }
   if (id === "auto" || id === "default") {
     return { id: "default" };
   }
@@ -182,11 +195,19 @@ function parseToolCalls(text: string): {
   }
 }
 
+type AgentResult = {
+  content: string;
+  tool_calls?: ReturnType<typeof parseToolCalls>["tool_calls"];
+};
+
+type TextDeltaHandler = (delta: string) => void;
+
 async function runAgent(
   model: string,
   messages: ChatMessage[],
   tools: ToolDef[] | undefined,
-): Promise<{ content: string; tool_calls?: ReturnType<typeof parseToolCalls>["tool_calls"] }> {
+  onTextDelta?: TextDeltaHandler,
+): Promise<AgentResult> {
   const prompt = `${messagesToPrompt(messages)}${toolInstructions(tools)}`;
   const selection = resolveModel(model);
   // ask mode: model replies without Cursor executing local tools — Grok owns tools.
@@ -197,12 +218,43 @@ async function runAgent(
     mode: "ask",
   });
   try {
-    const run = await agent.send(prompt);
+    let streamed = "";
+    const emit = (text: string) => {
+      if (!text) return;
+      streamed += text;
+      onTextDelta?.(text);
+    };
+
+    const run = await agent.send(prompt, {
+      onDelta: ({ update }) => {
+        if (update.type === "text-delta" && typeof update.text === "string") {
+          emit(update.text);
+        }
+      },
+    });
+
+    if (onTextDelta) {
+      // Live path: drain SDK stream so onDelta tokens flush as they arrive.
+      for await (const event of run.stream()) {
+        if (streamed.length > 0) continue;
+        // Fallback when the runtime only emits coarse assistant messages.
+        if (event.type !== "assistant") continue;
+        for (const block of event.message.content) {
+          if (block.type === "text" && block.text) emit(block.text);
+        }
+      }
+      if (run.status === "error") {
+        throw new Error(run.error?.message || "Cursor run failed");
+      }
+      const text = (run.result || streamed || "").trim();
+      return parseToolCalls(text);
+    }
+
     const settled = await run.wait();
     if (settled.status === "error") {
       throw new Error(settled.error?.message || "Cursor run failed");
     }
-    const text = (settled.result || "").trim();
+    const text = (settled.result || streamed || "").trim();
     return parseToolCalls(text);
   } finally {
     agent.close();
@@ -224,6 +276,40 @@ function sseChunk(data: unknown): string {
   return `data: ${JSON.stringify(data)}\n\n`;
 }
 
+function writeSseHeaders(res: import("node:http").ServerResponse): void {
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+    "X-Accel-Buffering": "no",
+  });
+}
+
+function writeContentDelta(
+  res: import("node:http").ServerResponse,
+  meta: { id: string; created: number; model: string },
+  content: string,
+  includeRole: boolean,
+): void {
+  res.write(
+    sseChunk({
+      id: meta.id,
+      object: "chat.completion.chunk",
+      created: meta.created,
+      model: meta.model,
+      choices: [
+        {
+          index: 0,
+          delta: includeRole
+            ? { role: "assistant", content }
+            : { content },
+          finish_reason: null,
+        },
+      ],
+    }),
+  );
+}
+
 async function handleChat(
   body: ChatRequest,
   res: import("node:http").ServerResponse,
@@ -232,11 +318,12 @@ async function handleChat(
   const messages = body.messages || [];
   const tools = body.tools;
   const stream = Boolean(body.stream);
-  const result = await runAgent(model, messages, tools);
   const id = `chatcmpl_${Date.now()}`;
   const created = Math.floor(Date.now() / 1000);
+  const meta = { id, created, model };
 
   if (!stream) {
+    const result = await runAgent(model, messages, tools);
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(
       JSON.stringify({
@@ -260,11 +347,15 @@ async function handleChat(
     return;
   }
 
-  res.writeHead(200, {
-    "Content-Type": "text/event-stream",
-    "Cache-Control": "no-cache",
-    Connection: "keep-alive",
+  // Open the SSE immediately so the client is not stuck waiting on first byte.
+  writeSseHeaders(res);
+  res.write(": connected\n\n");
+  let roleSent = false;
+  const result = await runAgent(model, messages, tools, (delta) => {
+    writeContentDelta(res, meta, delta, !roleSent);
+    roleSent = true;
   });
+
   if (result.tool_calls?.length) {
     res.write(
       sseChunk({
@@ -275,28 +366,20 @@ async function handleChat(
         choices: [
           {
             index: 0,
-            delta: { role: "assistant", tool_calls: result.tool_calls },
+            delta: {
+              ...(roleSent ? {} : { role: "assistant" }),
+              tool_calls: result.tool_calls,
+            },
             finish_reason: "tool_calls",
           },
         ],
       }),
     );
   } else {
-    res.write(
-      sseChunk({
-        id,
-        object: "chat.completion.chunk",
-        created,
-        model,
-        choices: [
-          {
-            index: 0,
-            delta: { role: "assistant", content: result.content },
-            finish_reason: null,
-          },
-        ],
-      }),
-    );
+    if (!roleSent && result.content) {
+      writeContentDelta(res, meta, result.content, true);
+      roleSent = true;
+    }
     res.write(
       sseChunk({
         id,
