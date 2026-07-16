@@ -1,0 +1,180 @@
+crates/codegen/xai-grok-agent/src/prompt/subagent_prompts.rs
+  s_6f22b08ecb472b::t_525c8994a335f1 26-29
+crates/codegen/xai-grok-pager/src/app/dispatch/auth.rs
+  s_dc9634392e47ff::t_4af6641710d3c3 192-215,217
+  s_dc9634392e47ff::t_847eb2f66cb99f 13
+  s_dc9634392e47ff::t_cec7a7d32fae9d 340-343,356-360
+  s_dc9634392e47ff::t_ff789b6fb41ae2 338-339
+  s_dc9634392e47ff::t_ef77866e69c257 361
+  s_dc9634392e47ff::t_09edfce9bad57b 332-335
+crates/codegen/xai-grok-shell/src/cursor/bridge.rs
+  s_dc9634392e47ff::t_e95dc4c3395e70 1-200
+.gitignore
+  s_dc9634392e47ff::t_32649f79af4269 4-5
+crates/codegen/xai-grok-shell/skills/init-deep/SKILL.md
+  s_6f22b08ecb472b::t_df5ff6fdcc97cf 1-27
+crates/codegen/xai-grok-pager/src/app/actions.rs
+  s_dc9634392e47ff::t_647e9dfe95f91b 598-599
+crates/codegen/xai-grok-shell/skills/start-work/SKILL.md
+  s_6f22b08ecb472b::t_8195cb9b42d556 1-34
+crates/codegen/xai-grok-agent/src/prompt/context.rs
+  s_6f22b08ecb472b::t_4a14d5b293d9d9 1226-1228,1233-1235,1248-1250,1255-1257,1270-1272,1277-1279
+crates/codegen/xai-grok-shell/src/builtin.rs
+  s_6f22b08ecb472b::t_39239a7f390328 64,68-72
+  s_6f22b08ecb472b::t_ddff7bb813d0d8 7,15-19
+crates/codegen/xai-grok-shell/src/cursor/credentials.rs
+  s_dc9634392e47ff::t_4dddf6a2d5c293 14-15
+  s_dc9634392e47ff::t_19bf2aa50e022d 1-2,8-12,19-57,61-86,88-89,128-131,133-159,161-164,166-172,180-192,194-200
+  s_dc9634392e47ff::t_783b2783cb0c70 193
+  s_dc9634392e47ff::t_9be37b5488e23c 13,58-60,87,165,173-179
+  s_dc9634392e47ff::t_295704e3349c53 16-18
+  s_dc9634392e47ff::t_dc4d7a164f846e 90-127
+  s_dc9634392e47ff::t_48da773441f096 3-7
+  s_dc9634392e47ff::t_5636dcca7163b5 160
+  s_dc9634392e47ff::t_c687cbb802dba9 132
+crates/codegen/xai-grok-pager/src/slash/commands/connect.rs
+  s_dc9634392e47ff::t_b9b5f028a7b718 1-24
+crates/codegen/xai-grok-shell/src/agent/mvp_agent/acp_agent.rs
+  s_dc9634392e47ff::t_cf80ea97ee3dbd 352-359,362
+  s_dc9634392e47ff::t_7eac74f5e98067 505
+  s_dc9634392e47ff::t_02d5010dc2b2df 314-330
+  s_dc9634392e47ff::t_9371a0676129a2 487-504,506-513
+crates/codegen/xai-grok-pager/docs/user-guide/16-subagents.md
+  s_6f22b08ecb472b::t_df4c7711bc1502 63-67,69-81
+crates/common/xai-tool-types/src/lib.rs
+  s_6f22b08ecb472b::t_c660ae0c57a6f8 16-25
+crates/codegen/xai-grok-pager/src/views/agents_modal.rs
+  s_6f22b08ecb472b::t_2fcdf4954f2e3d 223-225
+crates/codegen/xai-grok-shell/skills/ulw-loop/SKILL.md
+  s_6f22b08ecb472b::t_8ca63e3ad58605 1-40
+scripts/cursor-bridge/package.json
+  s_dc9634392e47ff::t_992fbcc4084a6e 1-19
+crates/codegen/xai-grok-shell/skills/check-work/SKILL.md
+  s_6f22b08ecb472b::t_615e8e223dc2fd 35,37-38
+scripts/cursor-bridge/tsconfig.json
+  s_dc9634392e47ff::t_8926bd7450d527 1-13
+crates/codegen/xai-grok-agent/src/builder.rs
+  s_6f22b08ecb472b::t_044c293f438274 1245-1247
+  s_6f22b08ecb472b::t_c8c6a0ce6dc3af 1210-1211,1219
+crates/codegen/xai-grok-pager/src/app/cli.rs
+  s_dc9634392e47ff::t_b8ea80c16de131 26,32,35-37
+crates/codegen/xai-grok-shell/src/auth/mod.rs
+  s_dc9634392e47ff::t_4440ce0e23b256 42-44
+crates/codegen/xai-grok-pager-bin/src/main.rs
+  s_dc9634392e47ff::t_f693dfe1975456 31
+  s_dc9634392e47ff::t_23e7aade4336e5 1750
+  s_dc9634392e47ff::t_4933797c153848 1755,1758-1761
+  s_dc9634392e47ff::t_f41abaed9a1db4 1744,1749,1751-1754,1756-1757,1762-1763
+crates/codegen/xai-grok-shell/src/agent/mvp_agent/agent_ops.rs
+  s_dc9634392e47ff::t_ca08bacd742c27 1183-1191
+  s_dc9634392e47ff::t_07d126442993b2 1100,1109-1118
+  s_dc9634392e47ff::t_06e528b69bafe2 1101-1108
+crates/codegen/xai-grok-shell/src/cursor/mod.rs
+  s_dc9634392e47ff::t_b1f25ca794d183 1-5,7,12-13,16-17,19-29,33,41,43-54,75-95
+  s_dc9634392e47ff::t_c3612862b697fd 56-74
+  s_dc9634392e47ff::t_631f00265fae51 32
+  s_dc9634392e47ff::t_5ba770e230d63b 55
+  s_dc9634392e47ff::t_69d3c56768ed32 8-11
+  s_dc9634392e47ff::t_d2590457a7564d 30-31,35,37
+  s_dc9634392e47ff::t_b00fa0b1cfbfa7 6,14-15,18,34,36,38-40,42
+crates/codegen/xai-grok-shell/src/agent/auth_method.rs
+  s_dc9634392e47ff::t_8ef1687860a31f 294,305
+  s_dc9634392e47ff::t_fb92fe3e3cc890 321-324,330-335
+  s_dc9634392e47ff::t_06e8ed50ca0dbb 504-507
+  s_dc9634392e47ff::t_d7903e7d22bbc3 490-503,508-510
+crates/codegen/xai-grok-shell/src/lib.rs
+  s_dc9634392e47ff::t_d6242d02aa9e78 19
+crates/codegen/xai-grok-pager/docs/user-guide/02-authentication.md
+  s_dc9634392e47ff::t_e216111ab746e2 7-18,20-32
+  s_dc9634392e47ff::t_6c8b15c91ad86b 19
+crates/codegen/xai-grok-pager/src/app/dispatch/router.rs
+  s_dc9634392e47ff::t_0d682c84d185b4 3-4
+  s_dc9634392e47ff::t_2dfc07f00e7f9e 993
+crates/codegen/xai-grok-pager/src/app/dispatch/task_result.rs
+  s_dc9634392e47ff::t_aea0799123e7b8 15
+  s_dc9634392e47ff::t_29907f9415e53d 560-592
+crates/common/xai-tool-types/src/task.rs
+  s_6f22b08ecb472b::t_743878ed5d0775 1369-1376
+  s_6f22b08ecb472b::t_af760936a8ed7f 1428-1430,1432
+  s_6f22b08ecb472b::t_5f78c41bd6fed7 23-25,27
+  s_6f22b08ecb472b::t_cda3c1f5f9f8ed 807-958,960-967
+crates/codegen/xai-grok-shell/src/auth/storage.rs
+  s_dc9634392e47ff::t_c1ad5ac964e50a 378-417
+crates/codegen/xai-grok-agent/src/discovery.rs
+  s_6f22b08ecb472b::t_8efd8376f3a6e4 1122-1123,1144,1156
+  s_6f22b08ecb472b::t_dc7a86c8a63934 68-69
+  s_6f22b08ecb472b::t_83f5787080d87a 1252,1254,1263-1266
+  s_6f22b08ecb472b::t_3bab44f02c9ff2 1193
+  s_6f22b08ecb472b::t_1e669ddaf23131 1335-1336,1338-1345
+  s_6f22b08ecb472b::t_e8fc7c1a44cd8d 992-993,996,999
+  s_6f22b08ecb472b::t_9811d08b0f5e3d 1228-1229,1231-1234,1236
+  s_6f22b08ecb472b::t_de5e411df49ac2 1251
+  s_6f22b08ecb472b::t_44294333a57ea8 1278
+  s_6f22b08ecb472b::t_3a3951a7a15337 1306-1307,1310-1311,1313
+  s_6f22b08ecb472b::t_801635c451ff01 1078,1080-1081,1086-1088,1104-1107
+  s_6f22b08ecb472b::t_b6fd0bbd15d315 1359-1360,1365,1376-1377,1384,1395,1400,1404,1413
+  s_6f22b08ecb472b::t_7d6a6afe1fab0e 1515-1521
+  s_6f22b08ecb472b::t_25e259854ab293 955-956,959,962
+crates/codegen/xai-grok-shell/skills/ulw/SKILL.md
+  s_6f22b08ecb472b::t_ecdbffc050417d 1-39
+crates/codegen/xai-grok-shell/skills/ulw-plan/SKILL.md
+  s_6f22b08ecb472b::t_484d2ff305b76e 1-34
+crates/codegen/xai-grok-agent/src/config.rs
+  s_6f22b08ecb472b::t_28d29b108dc72b 2576,2580-2582
+  s_6f22b08ecb472b::t_ce600bec645b4f 235-237
+  s_6f22b08ecb472b::t_e316eda97e719f 752-754,761-768
+  s_6f22b08ecb472b::t_a2f43b9b7c4b10 1880-1884
+  s_6f22b08ecb472b::t_70444d0fd5cef8 1624-1662
+  s_6f22b08ecb472b::t_fc022301ca7a1d 702-704,720-722
+  s_6f22b08ecb472b::t_0e32ed92e6415a 399-439
+  s_6f22b08ecb472b::t_b6ea5683310529 1752-1754
+  s_6f22b08ecb472b::t_fd658dfd38dffb 1915-1921
+  s_6f22b08ecb472b::t_9db3b6f49eb7bf 119,121-123,125,137,141-144
+  s_6f22b08ecb472b::t_913e4aaea4736f 2544-2546
+  s_6f22b08ecb472b::t_17913e0a6a478a 145
+crates/codegen/xai-grok-shell/skills/create-agent/SKILL.md
+  s_6f22b08ecb472b::t_6c8293f360f344 1-72
+crates/codegen/xai-grok-pager/src/slash/commands/mod.rs
+  s_dc9634392e47ff::t_c99f2db0d296ae 14
+  s_dc9634392e47ff::t_807b3020dba8ac 131
+scripts/cursor-bridge/src/index.ts
+  s_dc9634392e47ff::t_4483dd26f4ac99 1-30,32-33,81-135,139,141-190,193-194,196,198-200,204,207,209,221-317,319,321-323,325-326,328,330-369,372,374-384
+  s_dc9634392e47ff::t_03e815348df063 31,34-80
+  s_dc9634392e47ff::t_d32494b50b1022 327,329
+  s_dc9634392e47ff::t_569199608e9d90 370-371,373
+  s_dc9634392e47ff::t_cb02a79a979100 191,195,210-220
+  s_dc9634392e47ff::t_b337999c6fb98d 136-138,140,192,197,201-203,205-206,208,318,320,324
+crates/codegen/xai-grok-pager/docs/user-guide/08-skills.md
+  s_6f22b08ecb472b::t_6b5aa1ccf69bbc 202
+crates/codegen/xai-grok-pager/docs/user-guide/04-slash-commands.md
+  s_dc9634392e47ff::t_9739ef4828cd29 494
+  s_dc9634392e47ff::t_0b6152ccf7914b 492-493
+  s_dc9634392e47ff::t_af7981c94c880b 495-497
+  s_dc9634392e47ff::t_fe4fc9699ae4b9 498-499
+crates/codegen/xai-grok-shell/src/agent/models.rs
+  s_dc9634392e47ff::t_88f474977fc036 418-429
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "81c54ce49125a0a6d513737831cb418144c06350",
+  "prompts": {},
+  "sessions": {
+    "s_6f22b08ecb472b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a8135158-76e3-4a36-a446-b650e439245f",
+        "model": "grok-4.5"
+      },
+      "human_author": "Jackson57279 <otdoges@proton.me>"
+    },
+    "s_dc9634392e47ff": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7389b905-a397-4d9f-910f-366abf17e21a",
+        "model": "grok-4.5"
+      },
+      "human_author": "Jackson57279 <otdoges@proton.me>"
+    }
+  }
+}
